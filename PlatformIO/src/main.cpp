@@ -10,7 +10,7 @@ const char *password = "";
 WiFiServer server(80);
 
 // Variable to store the HTTP request
-string header;
+String header;
 
 // Time
 unsigned long currentTime = millis();
@@ -19,8 +19,9 @@ const long timeoutTime = 2000; // Timeout time
 
 // Sleep time
 RTC_DATA_ATTR int bootCount = 0;
-#define uS_TO_S_FACTOR \ 50000 
-#define TIME_TO_SLEEP 15 /* Time ESP32 will go to sleep (in seconds) */
+#define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
+#define TIME_TO_SLEEP  5 
+
 
 // Sensors GPIO pins
 int photoresistorPin = 27;
