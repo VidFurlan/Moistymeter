@@ -1,10 +1,10 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
-// #include <ArduinoJson.h>
+#include <iostream>
 
 // Network credentials
-const char *ssid = "";
-const char *password = "";
+const char *ssid = "VidPixel";
+const char *password = "12345678";
 
 // Set web server port
 WiFiServer server(80);
@@ -20,7 +20,7 @@ const long timeoutTime = 2000; // Timeout time
 // Sleep time
 RTC_DATA_ATTR int bootCount = 0;
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
-#define TIME_TO_SLEEP  5 
+#define TIME_TO_SLEEP  5
 
 
 // Sensors GPIO pins
@@ -41,7 +41,7 @@ static void establish_connection() {
 
   // Print local IP address and start web server
   Serial.println("");
-  Serial.println("WiFi connected.");
+  Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
   server.begin();
@@ -49,24 +49,26 @@ static void establish_connection() {
 
 static void send_data() {
   WiFiClient client = server.available(); // Listen for incoming clients
+  Serial.println("\nWaiting for requests: ");
 
   while (!client /*currentTime - previousTime <= timeoutTime*/) {
     client = server.available(); // Listen for incoming clients
     brightnes = digitalRead(photoresistorPin);
     delay(3000);
-    Serial.println(client);
+
+    if(client){Serial.println("Client sent request");}
+    else{Serial.print(".");}
 
     if (client) { // If a new client connects
       currentTime = millis();
       previousTime = currentTime;
 
-      Serial.println("New Client.");
+      Serial.println("New Client \n");
       String currentLine = ""; // String for client data
 
       while (client.connected() && currentTime - previousTime <=
                                        timeoutTime) { // While client connected
         currentTime = millis();
-        Serial.println("While loop");
         if (client.available()) { // if there's bytes to read from the client,
           char c = client.read(); // read a byte, then
           Serial.write(c);        // print it out the serial monitor
@@ -81,9 +83,10 @@ static void send_data() {
               // then a blank line:
               Serial.println("Sending data");
 
-              client.println("Connected");
-              client.println(brightnes);
+              client.print("Boot count: ");
               client.println(bootCount);
+              client.print("Brightnes: ");
+              client.println(brightnes);
 
               break;
             } else { // if you got a newline, then clear currentLine
@@ -100,8 +103,8 @@ static void send_data() {
 
       // Close the connection
       client.stop();
-      Serial.println("Client disconnected.");
-      Serial.println("");
+      Serial.println("Client disconnected \n");
+      break;
     }
   }
 }
@@ -134,3 +137,7 @@ void setup() {
 
   go_to_sleep();
 }
+
+void loop(){} 
+/*Don't remove - if you do, the program won't run and everything will get FUCKED UP (not sure why)
+https://forum.arduino.cc/t/undefined-reference-to-loop-solved/278198/3 */
