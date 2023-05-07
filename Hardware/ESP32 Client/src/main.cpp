@@ -1,6 +1,14 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+#include "BluetoothSerial.h"
 #include <iostream>
+
+// Set UUID for Bluetooth
+#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
 // Network credentials
 const char *ssid = "VidPixel";
@@ -19,9 +27,8 @@ const long timeoutTime = 2000; // Timeout time
 
 // Sleep time
 RTC_DATA_ATTR int bootCount = 0;
-#define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
-#define TIME_TO_SLEEP  5
-
+#define uS_TO_S_FACTOR 1000000 /* Conversion factor for micro seconds to seconds */
+#define TIME_TO_SLEEP 5
 
 // Sensors GPIO pins
 int photoresistorPin = 27;
@@ -29,12 +36,37 @@ int photoresistorPin = 27;
 // Sensors variables
 float brightnes = 0.0f;
 
-static void establish_connection() {
+static void setup_bluetooth()
+{
+  BLEDevice::init("Moistymeter");
+  // Create BLE server and service
+  BLEServer *pServer = BLEDevice::createServer();
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+  BLECharacteristic *pCharacteristic = pService->createCharacteristic(
+      CHARACTERISTIC_UUID,
+      BLECharacteristic::PROPERTY_READ |
+          BLECharacteristic::PROPERTY_WRITE);
+
+  pCharacteristic->setValue("Test text - will this work");
+  pService->start();
+
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06); // functions that help with iPhone connections issue
+  pAdvertising->setMinPreferred(0x12);
+  BLEDevice::startAdvertising();
+  Serial.println("Characteristic defined! Now you can read it in your phone!");
+}
+
+static void establish_connection()
+{
   // Connect to Wi-Fi network with SSID and password
   Serial.print("Connecting to ");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(500);
     Serial.print(".");
   }
@@ -47,19 +79,28 @@ static void establish_connection() {
   server.begin();
 }
 
-static void send_data() {
+static void send_data()
+{
   WiFiClient client = server.available(); // Listen for incoming clients
   Serial.println("\nWaiting for requests: ");
 
-  while (!client /*currentTime - previousTime <= timeoutTime*/) {
+  while (!client /*currentTime - previousTime <= timeoutTime*/)
+  {
     client = server.available(); // Listen for incoming clients
     brightnes = digitalRead(photoresistorPin);
     delay(3000);
 
-    if(client){Serial.println("Client sent request");}
-    else{Serial.print(".");}
+    if (client)
+    {
+      Serial.println("Client sent request");
+    }
+    else
+    {
+      Serial.print(".");
+    }
 
-    if (client) { // If a new client connects
+    if (client)
+    { // If a new client connects
       currentTime = millis();
       previousTime = currentTime;
 
@@ -67,17 +108,21 @@ static void send_data() {
       String currentLine = ""; // String for client data
 
       while (client.connected() && currentTime - previousTime <=
-                                       timeoutTime) { // While client connected
+                                       timeoutTime)
+      { // While client connected
         currentTime = millis();
-        if (client.available()) { // if there's bytes to read from the client,
+        if (client.available())
+        {                         // if there's bytes to read from the client,
           char c = client.read(); // read a byte, then
           Serial.write(c);        // print it out the serial monitor
           header += c;
-          if (c == '\n') { // if the byte is a newline character
+          if (c == '\n')
+          { // if the byte is a newline character
             // if the current line is blank, you got two newline characters in a
             // row. that's the end of the client HTTP request, so send a
             // response:
-            if (currentLine.length() == 0) {
+            if (currentLine.length() == 0)
+            {
               // HTTP headers always start with a response code (e.g. HTTP/1.1
               // 200 OK) and a content-type so the client knows what's coming,
               // then a blank line:
@@ -89,12 +134,16 @@ static void send_data() {
               client.println(brightnes);
 
               break;
-            } else { // if you got a newline, then clear currentLine
+            }
+            else
+            { // if you got a newline, then clear currentLine
               currentLine = "";
             }
-          } else if (c != '\r') { // if you got anything else but a carriage
-                                  // return character,
-            currentLine += c;     // add it to the end of the currentLine
+          }
+          else if (c != '\r')
+          {                   // if you got anything else but a carriage
+                              // return character,
+            currentLine += c; // add it to the end of the currentLine
           }
         }
       }
@@ -109,7 +158,8 @@ static void send_data() {
   }
 }
 
-static void go_to_sleep() {
+static void go_to_sleep()
+{
   esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
   Serial.println("Setup ESP32 to sleep for every " + String(TIME_TO_SLEEP) +
                  " Seconds");
@@ -120,13 +170,16 @@ static void go_to_sleep() {
   esp_deep_sleep_start();
 }
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
 
   // Boot counter
   delay(1000);
   ++bootCount;
   Serial.println("Boot number: " + String(bootCount));
+
+  setup_bluetooth();
 
   // Set pins
   pinMode(photoresistorPin, INPUT);
@@ -138,6 +191,5 @@ void setup() {
   go_to_sleep();
 }
 
-void loop(){} 
-/*Don't remove - if you do, the program won't run and everything will get FUCKED UP (not sure why)
-https://forum.arduino.cc/t/undefined-reference-to-loop-solved/278198/3 */
+void loop() {}
+/*Don't remove - if you do, the program won't run and everything will get FUCKED UP cuz the main loop tries to get executed*/
