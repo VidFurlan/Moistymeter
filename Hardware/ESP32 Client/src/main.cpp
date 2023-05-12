@@ -1,18 +1,10 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
-#include <BLEDevice.h>
-#include <BLEUtils.h>
-#include <BLEServer.h>
-#include "BluetoothSerial.h"
+#include <WiFiManager.h>
 #include <iostream>
 
-// Set UUID for Bluetooth
-#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-
 // Network credentials
-const char *ssid = "VidPixel";
-const char *password = "12345678";
+WiFiManager wifiManager;
 
 // Set web server port
 WiFiServer server(80);
@@ -36,47 +28,12 @@ int photoresistorPin = 27;
 // Sensors variables
 float brightnes = 0.0f;
 
-static void setup_bluetooth()
+static void connect_wifi()
 {
-  BLEDevice::init("Moistymeter");
-  // Create BLE server and service
-  BLEServer *pServer = BLEDevice::createServer();
-  BLEService *pService = pServer->createService(SERVICE_UUID);
-  BLECharacteristic *pCharacteristic = pService->createCharacteristic(
-      CHARACTERISTIC_UUID,
-      BLECharacteristic::PROPERTY_READ |
-          BLECharacteristic::PROPERTY_WRITE);
-
-  pCharacteristic->setValue("Test text - will this work");
-  pService->start();
-
-  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-  pAdvertising->addServiceUUID(SERVICE_UUID);
-  pAdvertising->setScanResponse(true);
-  pAdvertising->setMinPreferred(0x06); // functions that help with iPhone connections issue
-  pAdvertising->setMinPreferred(0x12);
-  BLEDevice::startAdvertising();
-  Serial.println("Characteristic defined! Now you can read it in your phone!");
-}
-
-static void establish_connection()
-{
-  // Connect to Wi-Fi network with SSID and password
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
-  }
-
-  // Print local IP address and start web server
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
+  wifiManager.autoConnect();
+  Serial.println(wifiManager.getWiFiHostname());
   server.begin();
+  Serial.println(WiFi.localIP());
 }
 
 static void send_data()
@@ -84,7 +41,7 @@ static void send_data()
   WiFiClient client = server.available(); // Listen for incoming clients
   Serial.println("\nWaiting for requests: ");
 
-  while (!client /*currentTime - previousTime <= timeoutTime*/)
+  while (!client)
   {
     client = server.available(); // Listen for incoming clients
     brightnes = digitalRead(photoresistorPin);
@@ -94,9 +51,13 @@ static void send_data()
     {
       Serial.println("Client sent request");
     }
+    else if (WiFi.isConnected())
+    {
+      Serial.println("No WiFi Available");     
+    }
     else
     {
-      Serial.print(".");
+      Serial.print(".");     
     }
 
     if (client)
@@ -174,17 +135,17 @@ void setup()
 {
   Serial.begin(115200);
 
+  connect_wifi();
+
   // Boot counter
   delay(1000);
   ++bootCount;
   Serial.println("Boot number: " + String(bootCount));
 
-  setup_bluetooth();
-
   // Set pins
   pinMode(photoresistorPin, INPUT);
 
-  establish_connection();
+  //establish_connection();
 
   send_data();
 
