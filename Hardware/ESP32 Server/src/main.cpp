@@ -1,18 +1,13 @@
 #include <Arduino.h>
+#include <esp32-setup-lib.h>
 
-// put function declarations here:
-int myFunction(int, int);
-
-void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+void setup()
+{
+    Serial.begin(115200);
+    pressESCtoEnterSetup(4000, 500);
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
-}
+void loop() 
+{
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
 }
