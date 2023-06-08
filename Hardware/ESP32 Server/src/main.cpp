@@ -45,7 +45,7 @@ static void esp_now_setup()
 
 void setup()
 {
-  data_to_send.message = "Hello Friend";
+  data_to_send.message = "Hello Friends! (Sent from server)";
 
   Serial.begin(115200);
 
